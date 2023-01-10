@@ -1,21 +1,33 @@
+# fix docker compose version
+version: '3.7'
 services:
 
+  # typical tiangolo setup
   fastapi:
     build:
       context: .
       dockerfile: Dockerfile
 
     container_name: fastapi
+    # apparantly workers can be set here?
+    # why is it 2 in Dockerfile
     environment:
       - WORKERS=1
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
       - CELERY_RESULT_BACKEND=redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_STORE_DB_INDEX}
+    # this goes behind proxy so doesnt matter the port
     ports:
       - 8000:8000
     volumes:
+      # do we need all volumes?
+      # tmp is for dicom zips
+      # why volume app if its getting copied in dockerfile
       - ./app:/code/app
       - shared-volume:/tmp
+    # last question, tiangolo image run app here?
 
+  # celey workers
+  # also deps on fastapi and rabbitmq
   worker:
     build:
       context: .
@@ -24,6 +36,7 @@ services:
     volumes:
       - ./app/worker:/code/worker
       - ./app:/code/app
+      # this is duplicated?
       - shared-volume:/tmp
     container_name: celery
     environment:
@@ -34,14 +47,25 @@ services:
       - redis
       - rabbitmq
 
+  # redis and rabbit mq? do they need to be on object storage api?
+  # i think they server general purposes and must be separate projects
+  # so that testing this code will be easier no?
+  # and scaling db s will be easier too that way
+  # but the for example SQL that we use for dicom metadata should be here i think. no reason
+  # to host SQL else where, but with redis and rabbitmq i we could.
   redis:
     container_name: redis
     image: redis:6-alpine
 
+  # flower dashboard
+  # only gets the urls
+  # depends on all
   dashboard:
     build:
       context: .
       dockerfile: Dockerfile
+    # flower port? does it matter or what
+    # can we locate them with nginx for nicer paths?
     command: flower --app=worker.celery_app --port=5555 --broker=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
     ports:
       - 5556:5555
@@ -57,6 +81,9 @@ services:
       - worker
       - rabbitmq
 
+  # this can be elsewhere?
+  # its a general purpose rabbit mq that can be scaled should it be inside a web container?
+  # maybe not
   rabbitmq:
     hostname: rabbitmq
     image: rabbitmq:3-management
@@ -67,7 +94,13 @@ services:
     ports:
       - 5672
       - 15672:15672
+      # what is this port
       - 15692:15692
 
+# this is genius keep this
+# unless we pass zip directly to MQ?
+# does not seem like a good idea for now, the string thingy looks better
+# unless its multiserver scaling which we are far from now
+# think about this later
 volumes:
   shared-volume:
