@@ -1,23 +1,25 @@
 version: '3.7'
 
 services:
-    python-template:
-        build:
-            context: ./
-            dockerfile: ./.docker/Dockerfile
-        container_name: ${APP_NAME}
-        restart: always
-        environment:
-            - APP_PORT=${APP_PORT}
-        expose:
-            - ${APP_PORT}
-        command: make start
 
-    nginx:
-        build: ./nginx
-        container_name: nginx
-        restart: always
-        ports:
-            - ${APP_PORT}:${NGINX_CONTAINER_PORT}
-        depends_on:
-            - python-template
+  # redis db
+  redis:
+    container_name: redis
+    image: redis:6-alpine
+
+  # celery broker (rmq)
+  rabbitmq:
+    hostname: rabbitmq
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - ${RABBITMQ_PORT}
+      - ${RABBITMQ_DASHBOARD_PORT}:${RABBITMQ_DASHBOARD_PORT}
+      - ${RABBITMQ_METRICS_PORT}:${RABBITMQ_METRICS_PORT}
+
+volumes:
+  shared-volume:

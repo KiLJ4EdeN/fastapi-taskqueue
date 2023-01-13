@@ -1,89 +1,72 @@
-# fix docker compose version
 version: '3.7'
-services:
 
-  # typical tiangolo setup
+services:
+  # main application
   fastapi:
     build:
       context: .
-      dockerfile: Dockerfile
-
-    container_name: fastapi
-    # apparantly workers can be set here?
-    # why is it 2 in Dockerfile
+      dockerfile: ./.docker/Dockerfile
+    container_name: ${APP_NAME}
+    restart: always
     environment:
-      - WORKERS=1
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
       - CELERY_RESULT_BACKEND=redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_STORE_DB_INDEX}
-    # this goes behind proxy so doesnt matter the port
-    ports:
-      - 8000:8000
+    expose:
+        - ${APP_PORT}
     volumes:
-      # do we need all volumes?
-      # tmp is for dicom zips
-      # why volume app if its getting copied in dockerfile
-      - ./app:/code/app
-      - shared-volume:/tmp
-    # last question, tiangolo image run app here?
+      - ${APP_DIR}:${APP_DOCKER_DIR}/app
+      - shared-volume:${SHARED_VOLUME_PATH}
+    command: gunicorn app.api:app --workers ${APP_WORKERS} --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${APP_PORT} 
 
-  # celey workers
-  # also deps on fastapi and rabbitmq
+  # celery app
   worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./.docker/Dockerfile
     command: celery worker --app=worker.celery_app
     volumes:
-      - ./app/worker:/code/worker
-      - ./app:/code/app
-      # this is duplicated?
-      - shared-volume:/tmp
+      - ${APP_DIR}/worker:${APP_DOCKER_DIR}/worker
+      - ${APP_DIR}:${APP_DOCKER_DIR}/app
+      - shared-volume:${SHARED_VOLUME_PATH}
     container_name: celery
+    restart: always
     environment:
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
       - CELERY_RESULT_BACKEND=redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_STORE_DB_INDEX}
     depends_on:
       - fastapi
+      - nginx
       - redis
       - rabbitmq
 
-  # redis and rabbit mq? do they need to be on object storage api?
-  # i think they server general purposes and must be separate projects
-  # so that testing this code will be easier no?
-  # and scaling db s will be easier too that way
-  # but the for example SQL that we use for dicom metadata should be here i think. no reason
-  # to host SQL else where, but with redis and rabbitmq i we could.
+  # redis db
   redis:
     container_name: redis
     image: redis:6-alpine
 
-  # flower dashboard
-  # only gets the urls
-  # depends on all
+  # flower dashboard for celery
   dashboard:
     build:
       context: .
-      dockerfile: Dockerfile
-    # flower port? does it matter or what
-    # can we locate them with nginx for nicer paths?
-    command: flower --app=worker.celery_app --port=5555 --broker=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
+      dockerfile: ./.docker/Dockerfile
+    command: flower --app=worker.celery_app --port=${FLOWER_CONTAINER_PORT} --broker=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
     ports:
-      - 5556:5555
+      - ${FLOWER_HOST_PORT}:${FLOWER_CONTAINER_PORT}
     volumes:
-      - ./app/worker:/code/worker
+      - ${APP_DIR}/worker:${APP_DOCKER_DIR}/worker
     container_name: flower
+    restart: always
     environment:
       - CELERY_BROKER_URL=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
       - CELERY_RESULT_BACKEND=redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_STORE_DB_INDEX}
     depends_on:
       - fastapi
+      - nginx
       - redis
       - worker
       - rabbitmq
 
-  # this can be elsewhere?
-  # its a general purpose rabbit mq that can be scaled should it be inside a web container?
-  # maybe not
+  # celery broker (rmq)
   rabbitmq:
     hostname: rabbitmq
     image: rabbitmq:3-management
@@ -91,16 +74,21 @@ services:
       - RABBITMQ_USERNAME=${RABBITMQ_USERNAME}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     container_name: rabbitmq
+    restart: always
     ports:
-      - 5672
-      - 15672:15672
-      # what is this port
-      - 15692:15692
+      - ${RABBITMQ_PORT}
+      - ${RABBITMQ_DASHBOARD_PORT}:${RABBITMQ_DASHBOARD_PORT}
+      - ${RABBITMQ_METRICS_PORT}:${RABBITMQ_METRICS_PORT}
 
-# this is genius keep this
-# unless we pass zip directly to MQ?
-# does not seem like a good idea for now, the string thingy looks better
-# unless its multiserver scaling which we are far from now
-# think about this later
+  # nginx
+  reverse-proxy:
+      build: ./nginx
+      container_name: reverse-proxy
+      restart: always
+      ports:
+          - ${NGINX_HOST_PORT}:${NGINX_CONTAINER_PORT}
+      depends_on:
+          - fastapi
+
 volumes:
   shared-volume:
