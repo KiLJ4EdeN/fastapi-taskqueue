@@ -1,5 +1,5 @@
 This site contains the project documentation for the
-`python_template` project.
+`object_storage` project.
 Its aim is to give you a framework to build your
 project documentation using Python, MkDocs,
 mkdocstrings, and the Material for MkDocs theme.
@@ -21,7 +21,7 @@ your use case by looking at the different pages.
 
 ## Project Overview
 
-::: python_template
+::: object_storage
 
 ## Acknowledgements
 

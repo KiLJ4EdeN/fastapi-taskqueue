@@ -3,17 +3,25 @@ requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry]
-name = "python_template"
-version = "0.0.2a0"
-description = "python project template"
+name = "object-storage"
+version = "0.0.1"
+description = "s3 object storage with fastapi"
 authors = ["Abdolkarim Saeedi <a-saeedi@srbiau.ac.ir>"]
 license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-Flask = "^2.2.2"
+python = "^3.8"
+fastapi = "^0.79.0"
+uvicorn = "^0.18.2"
+boto3 = "^1.24.42"
+redis = "^3.5.3"
+flower = "^0.9.7"
+celery = "^4.4.7"
+python-multipart = "^0.0.5"
 python-dotenv = "^0.21.0"
+toml = "^0.10.2"
+gunicorn = "^20.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^3.0"
@@ -39,7 +47,7 @@ testpaths = [
 omit = ['*__init__*']
 branch = true
 concurrency = ['thread']
-source = ["python_template/"]
+source = ["object_storage/"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -63,19 +71,19 @@ line-length = 88
 preview = true
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 exclude = []
 strict = true
 
 [[tool.mypy.overrides]]
-module = "python_template"
+module = "object_storage"
 disallow_untyped_defs = false
 warn_return_any = false
 ignore_missing_imports = false
 
 [tool.isort]
-known_third_party = ["dotenv", "flask", "setuptools", "toml"]
+known_third_party = ["python_template", "setuptools", "toml"]
 line_length = 88
 profile = 'black'

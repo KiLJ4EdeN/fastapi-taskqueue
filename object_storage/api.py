@@ -1,4 +1,3 @@
-
 import logging
 import tempfile
 from fastapi import FastAPI, UploadFile, File
@@ -16,11 +15,8 @@ def get():
 
 @app.post("/")
 async def get_file(file: UploadFile = File()):
-
     if not file.filename.endswith(".zip"):
-
-        return jsonable_encoder({'status': '422',
-                                 'message': 'File is not a zip file'})
+        return jsonable_encoder({"status": "422", "message": "File is not a zip file"})
 
     directory_path = tempfile.mkdtemp()
     file_location = f"{directory_path}/{file.filename}"
