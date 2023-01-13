@@ -1,0 +1,2 @@
+include python_template/
+include tests/

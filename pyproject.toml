@@ -1,0 +1,81 @@
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.poetry]
+name = "python_template"
+version = "0.0.2a0"
+description = "python project template"
+authors = ["Abdolkarim Saeedi <a-saeedi@srbiau.ac.ir>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+Flask = "^2.2.2"
+python-dotenv = "^0.21.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^3.0"
+flake8 = "^3.7"
+black = {version = "^22.3.0", allow-prereleases = true}
+coverage = "^6.4.4"
+pre-commit = "^2.20.0"
+mypy = "^0.971"
+mkdocs = "^1.3.1"
+mkdocstrings = {extras = ["python"], version = "^0.19.0"}
+mkdocs-material = "^8.5.1"
+types-toml = "^0.10.8"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+    "integration",
+]
+
+[tool.coverage.run]
+omit = ['*__init__*']
+branch = true
+concurrency = ['thread']
+source = ["python_template/"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "def __str__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:",
+]
+ignore_errors = true
+
+[tool.coverage.html]
+directory = "coverage"
+
+[tool.black]
+include = '\.pyi?$'
+line-length = 88
+preview = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+exclude = []
+strict = true
+
+[[tool.mypy.overrides]]
+module = "python_template"
+disallow_untyped_defs = false
+warn_return_any = false
+ignore_missing_imports = false
+
+[tool.isort]
+known_third_party = ["dotenv", "flask", "setuptools", "toml"]
+line_length = 88
+profile = 'black'
